@@ -1,0 +1,6 @@
+.pio
+.venv
+.ei-tmp
+.vscode
+
+src/secrets.h
