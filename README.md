@@ -4,6 +4,55 @@ Hands-free voice assistant for the Seeed Studio XIAO ESP32-S3 Sense. The on-devi
 
 No physical button. No custom backend. Spoken output (streamed PCM16 @ 24 kHz through a PCM5102A I2S DAC) plus a Serial transcript.
 
+## Quick start
+
+### 1. VS Code + PlatformIO
+
+1. Install [VS Code](https://code.visualstudio.com/).
+2. Install the **PlatformIO IDE** extension (`platformio.platformio-ide`).
+3. **File → Open Folder…** and select this repository root (the folder that contains `platformio.ini`).
+4. Wait for PlatformIO to pull the `espressif32` platform and libraries on first open (status bar / PlatformIO Home).
+5. Confirm the active environment is `seeed_xiao_esp32s3` (defined in [`platformio.ini`](platformio.ini)).
+
+Optional CLI (same toolchain PlatformIO installs):
+
+```bash
+~/.platformio/penv/bin/pio run
+```
+
+### 2. Secrets (`src/secrets.h`)
+
+Copy the template once, then edit values. `src/secrets.h` is gitignored — never commit it.
+
+```bash
+cp src/secrets.example.h src/secrets.h
+```
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `WIFI_SSID` | yes | 2.4 GHz only (ESP32-S3 has no 5 GHz radio) |
+| `WIFI_PASSWORD` | yes | Wi-Fi password |
+| `OPENAI_API_KEY` | yes | Project API key from [platform.openai.com/api-keys](https://platform.openai.com/api-keys); prefer a restricted, rotatable key |
+| `OPENAI_REALTIME_MODEL` | no | Default `gpt-realtime-2.1-mini`; alternatives: `gpt-realtime-mini`, `gpt-realtime`, `gpt-realtime-2.1` |
+| `OPENAI_REALTIME_VOICE` | no | Default `marin` |
+| `AUDIO_OUT_VOLUME` | no | `0.0`–`1.0` (default `0.1`); values above `1.0` amplify and may clip |
+| `OPENAI_RESPONSES_MODEL` | no | Model for web-assisted answers (must support hosted `web_search`) |
+| `OPENAI_REASONING_EFFORT` | no | e.g. `"low"`; set `""` to omit |
+| `OPENAI_SYSTEM_PROMPT` | no | Shared instructions for Realtime + Responses |
+
+### 3. Flash and monitor
+
+1. Wire the PCM5102A DAC (see below) and connect the XIAO ESP32-S3 Sense over USB.
+2. In VS Code / PlatformIO: **Upload** (→), then **Serial Monitor** (plug icon), **115200** baud.
+3. Or from the repo root:
+
+```bash
+~/.platformio/penv/bin/pio run -t upload
+~/.platformio/penv/bin/pio device monitor
+```
+
+On boot you should hear a short beep, then spoken cues after Wi-Fi and VAD calibration. Speak naturally once listening resumes.
+
 ## Audio output: PCM5102A wiring
 
 A second, independent I2S controller (`I2S_NUM_1`) drives the DAC; the PDM microphone keeps its own `I2S_NUM_0`, so both run concurrently without conflict.
@@ -136,21 +185,11 @@ None of this changes the dominant source of end-to-end latency, which is the Ope
 - OpenAI ephemeral client secrets for browser/WebRTC clients are minted by a server that already has a project key. With **no custom backend**, the safest feasible direct-device option is a **gitignored** project API key in `src/secrets.h`, preferably project-scoped and rotatable.
 - Never commit `src/secrets.h`.
 
-## Build / upload / test
+## Example Serial output
 
-```bash
-# from the repository root
-cp src/secrets.example.h src/secrets.h   # first time only
-# edit WIFI_* and OPENAI_API_KEY
+See [Quick start](#quick-start) for build / upload / monitor.
 
-~/.platformio/penv/bin/pio run
-~/.platformio/penv/bin/pio run -t upload
-~/.platformio/penv/bin/pio device monitor
-```
-
-Speak naturally after calibration completes.
-
-### Example Serial output — knowledge only (no search)
+### Knowledge only (no search)
 
 ```
 [vad] слышу речь, записываю…
@@ -170,7 +209,7 @@ web_search: не нужен
 
 (The spoken answer is already playing through the DAC by the time `response.done` is logged -- `askUtterance()` waits for `audio_out` to finish draining before `askAudio()` returns, which is when the transcript above gets printed.)
 
-### Example Serial output — with web search
+### With web search
 
 ```
 [vad] слышу речь, записываю…
